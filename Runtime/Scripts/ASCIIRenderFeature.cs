@@ -12,24 +12,14 @@ namespace OccaSoftware
         {
             private Material asciiMaterial;
 
-#if URP_13_1_12
-			private RTHandle asciiRenderTarget;
-			private RTHandle source;
-#else
             private RenderTargetHandle asciiRenderTarget;
             private RenderTargetHandle source;
-#endif
 
             //For Rescaling
             private Material rescaleMaterial;
 
-#if URP_13_1_12
-			List<RTHandle> renderTargetHandles = new List<RTHandle>();
-			RTHandle finalUpscaleHandle;
-#else
             List<RenderTargetHandle> renderTargetHandles = new List<RenderTargetHandle>();
             RenderTargetHandle finalUpscaleHandle;
-#endif
 
             private int iterations = 5;
             ASCIIShaderData shaderData;
@@ -39,14 +29,6 @@ namespace OccaSoftware
                 this.iterations = iterations;
                 InitializeRenderTextures(iterations);
             }
-
-#if URP_13_1_12
-			public void SetTarget(RTHandle colorHandle)
-			{
-				source = colorHandle;
-			}
-
-#endif
 
             public void SetShaderData(ASCIIShaderData shaderData)
             {
@@ -72,20 +54,11 @@ namespace OccaSoftware
             {
                 const string targetId = "_ASCIITarget";
                 const string finalId = "_FinalUpscale";
-#if URP_13_1_12
-				RTHandles.Initialize(Screen.width, Screen.height);
-				asciiRenderTarget = RTHandles.Alloc(targetId);
-				if (iterations >= 1)
-				{
-					finalUpscaleHandle = RTHandles.Alloc(finalId);
-				}
-#else
                 asciiRenderTarget.Init(targetId);
                 if (iterations >= 1)
                 {
                     finalUpscaleHandle.Init(finalId);
                 }
-#endif
             }
 
             // This method is called before executing the render pass.
@@ -97,11 +70,7 @@ namespace OccaSoftware
             {
                 RenderTextureDescriptor rtDescriptor = cameraTextureDescriptor;
                 rtDescriptor.colorFormat = RenderTextureFormat.DefaultHDR;
-#if URP_13_1_12
-				cmd.GetTemporaryRT(Shader.PropertyToID(asciiRenderTarget.name), rtDescriptor);
-#else
                 cmd.GetTemporaryRT(asciiRenderTarget.id, rtDescriptor);
-#endif
 
                 CoreUtils.Destroy(asciiMaterial);
                 CoreUtils.Destroy(rescaleMaterial);
@@ -122,11 +91,7 @@ namespace OccaSoftware
                 if (asciiMaterial == null)
                     return;
 
-#if URP_13_1_12
-				RTHandle source = renderingData.cameraData.renderer.cameraColorTargetHandle;
-#else
                 RenderTargetIdentifier source = renderingData.cameraData.renderer.cameraColorTarget;
-#endif
                 RenderTextureDescriptor rtDescriptor = renderingData.cameraData.cameraTargetDescriptor;
                 rtDescriptor.colorFormat = RenderTextureFormat.DefaultHDR;
 
@@ -151,58 +116,31 @@ namespace OccaSoftware
                             break;
                         }
                         string sampleId = "_Sample " + i;
-#if URP_13_1_12
-						RTHandle tempHandle = RTHandles.Alloc(sampleId);
-
-						cmd.GetTemporaryRT(Shader.PropertyToID(tempHandle.name), downscaleDescriptor);
-#else
                         RenderTargetHandle tempHandle = new RenderTargetHandle();
 
                         tempHandle.Init(sampleId);
                         cmd.GetTemporaryRT(tempHandle.id, downscaleDescriptor);
-#endif
                         renderTargetHandles.Add(tempHandle);
-#if URP_13_1_12
-						RTHandle downscaleSource = i == 0 ? source : renderTargetHandles[i - 1];
-						Blitter.BlitCameraTexture(cmd, downscaleSource, tempHandle, rescaleMaterial, 0);
-#else
+
                         RenderTargetIdentifier downscaleSource = i == 0 ? source : renderTargetHandles[i - 1].Identifier();
                         Blit(cmd, downscaleSource, tempHandle.Identifier(), rescaleMaterial);
-#endif
                     }
 
                     rescaleMaterial.SetFloat("_Rescale_UVOffset", 0.5f);
                     for (int i = 1; i < renderTargetHandles.Count; i++)
                     {
-#if URP_13_1_12
-						RTHandle currentSource = renderTargetHandles[renderTargetHandles.Count - i];
-						RTHandle currentTarget = renderTargetHandles[renderTargetHandles.Count - i - 1];
-						Blitter.BlitCameraTexture(cmd, currentSource, currentTarget, rescaleMaterial, 0);
-#else
                         RenderTargetHandle currentSource = renderTargetHandles[renderTargetHandles.Count - i];
                         RenderTargetHandle currentTarget = renderTargetHandles[renderTargetHandles.Count - i - 1];
                         Blit(cmd, currentSource.Identifier(), currentTarget.Identifier(), rescaleMaterial);
-#endif
                     }
 
-#if URP_13_1_12
-					cmd.GetTemporaryRT(Shader.PropertyToID(finalUpscaleHandle.name), rtDescriptor);
-					Blitter.BlitCameraTexture(cmd, renderTargetHandles[0], finalUpscaleHandle, rescaleMaterial, 0);
-#else
                     cmd.GetTemporaryRT(finalUpscaleHandle.id, rtDescriptor);
                     Blit(cmd, renderTargetHandles[0].id, finalUpscaleHandle.id, rescaleMaterial);
-#endif
                 }
 
-#if URP_13_1_12
-				RTHandle asciiMatInputTex = iterations >= 1 ? finalUpscaleHandle : source;
-				Blitter.BlitCameraTexture(cmd, asciiMatInputTex, asciiRenderTarget, asciiMaterial, 0);
-				Blitter.BlitCameraTexture(cmd, asciiRenderTarget, source);
-#else
                 RenderTargetIdentifier asciiMatInputTex = iterations >= 1 ? finalUpscaleHandle.id : source;
                 Blit(cmd, asciiMatInputTex, asciiRenderTarget.Identifier(), asciiMaterial);
                 Blit(cmd, asciiRenderTarget.Identifier(), source);
-#endif
 
                 context.ExecuteCommandBuffer(cmd);
                 cmd.Clear();
@@ -212,15 +150,6 @@ namespace OccaSoftware
             /// Cleanup any allocated resources that were created during the execution of this render pass.
             public override void FrameCleanup(CommandBuffer cmd)
             {
-#if URP_13_1_12
-				asciiRenderTarget = null;
-				finalUpscaleHandle = null;
-
-				for (int i = 0; i < renderTargetHandles.Count; i++)
-				{
-					renderTargetHandles[i] = null;
-				}
-#else
                 cmd.ReleaseTemporaryRT(asciiRenderTarget.id);
 
                 if (finalUpscaleHandle != null)
@@ -233,7 +162,6 @@ namespace OccaSoftware
                         cmd.ReleaseTemporaryRT(renderTargetHandles[i].id);
                     }
                 }
-#endif
             }
         }
 
@@ -333,19 +261,6 @@ namespace OccaSoftware
             asciiPass.SetShaderData(shaderData);
             renderer.EnqueuePass(asciiPass);
         }
-
-#if URP_13_1_12
-		public override void SetupRenderPasses(ScriptableRenderer renderer, in RenderingData renderingData)
-		{
-			if (renderingData.cameraData.cameraType == CameraType.Game)
-			{
-				// Calling ConfigureInput with the ScriptableRenderPassInput.Color argument
-				// ensures that the opaque texture is available to the Render Pass.
-				asciiPass.ConfigureInput(ScriptableRenderPassInput.Color);
-				asciiPass.SetTarget(renderer.cameraColorTargetHandle, m_Intensity);
-			}
-		}
-#endif
 
         public class ASCIIShaderData
         {
