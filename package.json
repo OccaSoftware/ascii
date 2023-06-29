@@ -1,7 +1,7 @@
 {
   "displayName": "Ascii",
   "name": "com.occasoftware.ascii",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "unity": "2022.3",
   "description": "Convert your 2D or 3D scene to Ascii Art in real time.",
   "author": {
@@ -12,6 +12,7 @@
   "documentationUrl": "https://occasoftware.com/manual/ascii",
   "unityRelease": "0f1",
   "dependencies": {
-    "com.unity.shadergraph": "12.1.6"
+    "com.unity.shadergraph": "14.0.7",
+    "com.unity.render-pipelines.universal": "14.0.7"
   }
 }
