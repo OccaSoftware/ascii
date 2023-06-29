@@ -115,6 +115,7 @@ namespace OccaSoftware
 
                 if (asciiMaterial == null)
                     return;
+
                 using (new ProfilingScope(cmd, sampler))
                 {
                     RenderTextureDescriptor rtDescriptor = renderingData.cameraData.cameraTargetDescriptor;
