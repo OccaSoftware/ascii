@@ -3,6 +3,7 @@
   "name": "com.occasoftware.ascii",
   "version": "3.0.0",
   "unity": "2022.3",
+  "packageType": "package",
   "description": "Convert your 2D or 3D scene to Ascii Art in real time.",
   "author": {
     "name": "OccaSoftware",
